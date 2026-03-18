@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (insertErr) {
-      console.error("[DB] 저장 오류:", insertErr);
-      return NextResponse.json({ error: "신청 저장에 실패했습니다." }, { status: 500 });
+      console.error("[DB] 저장 오류:", JSON.stringify(insertErr));
+      return NextResponse.json({ error: "신청 저장 실패: " + insertErr.message + " (code: " + insertErr.code + ")" }, { status: 500 });
     }
 
     return NextResponse.json({
