@@ -35,6 +35,9 @@ export default function AdminPage() {
   const [newYoutubeUrl, setNewYoutubeUrl] = useState("");
   const [newResourceLink, setNewResourceLink] = useState("");
 
+  // 메시지
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   // 이미지 모달
   const [modalImage, setModalImage] = useState<string | null>(null);
 
@@ -86,14 +89,25 @@ export default function AdminPage() {
   const handleAddResource = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newYoutubeUrl.trim() || !newResourceLink.trim()) return;
-    await fetch("/api/admin/resources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ youtube_url: newYoutubeUrl.trim(), resource_link: newResourceLink.trim() }),
-    });
-    setNewYoutubeUrl("");
-    setNewResourceLink("");
-    fetchResources();
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/resources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ youtube_url: newYoutubeUrl.trim(), resource_link: newResourceLink.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "저장 실패" });
+        return;
+      }
+      setMessage({ type: "success", text: "자료가 저장되었습니다." });
+      setNewYoutubeUrl("");
+      setNewResourceLink("");
+      fetchResources();
+    } catch (err) {
+      setMessage({ type: "error", text: "네트워크 오류: " + (err instanceof Error ? err.message : "알 수 없음") });
+    }
   };
 
   const handleDeleteResource = async (id: string) => {
@@ -265,6 +279,11 @@ export default function AdminPage() {
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-2">같은 유튜브 URL이 있으면 자료 링크가 업데이트됩니다.</p>
+              {message && (
+                <div className={`mt-3 p-3 rounded-lg text-sm ${message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                  {message.text}
+                </div>
+              )}
             </form>
 
             {/* 자료 목록 */}
