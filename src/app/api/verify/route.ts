@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getServiceSupabase } from "@/lib/supabase";
-import { sendAlimtalk } from "@/lib/solapi";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -43,7 +42,6 @@ export async function POST(req: NextRequest) {
       const text = response.content[0].type === "text" ? response.content[0].text : "";
       aiResult = text;
 
-      // JSON 파싱 시도
       const jsonMatch = text.match(/\{[\s\S]*?\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
@@ -70,7 +68,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "신청 저장에 실패했습니다." }, { status: 500 });
     }
 
-    // 자동승인 시 알림톡 발송
+    // 자동승인 시 자료 링크 반환
+    let resourceLink = "";
     if (isSubscribed) {
       const { data: resource } = await sb
         .from("resources")
@@ -78,12 +77,10 @@ export async function POST(req: NextRequest) {
         .eq("youtube_url", youtubeUrl)
         .single();
 
-      if (resource?.resource_link) {
-        await sendAlimtalk({ phone, resourceLink: resource.resource_link });
-      }
+      resourceLink = resource?.resource_link || "";
     }
 
-    return NextResponse.json({ status, aiResult });
+    return NextResponse.json({ status, aiResult, resourceLink });
   } catch (err) {
     console.error("[Verify] 오류:", err);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });

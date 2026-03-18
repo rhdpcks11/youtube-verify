@@ -23,7 +23,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [tab, setTab] = useState<"submissions" | "resources">("submissions");
+  const [tab, setTab] = useState<"submissions" | "resources" | "phones">("submissions");
 
   // 신청 목록
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -34,6 +34,10 @@ export default function AdminPage() {
   const [resLoading, setResLoading] = useState(false);
   const [newYoutubeUrl, setNewYoutubeUrl] = useState("");
   const [newResourceLink, setNewResourceLink] = useState("");
+
+  // 전화번호 수집
+  const [phones, setPhones] = useState<{ phone: string; youtube_url: string; created_at: string; status: string }[]>([]);
+  const [phoneLoading, setPhoneLoading] = useState(false);
 
   // 메시지
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -55,12 +59,20 @@ export default function AdminPage() {
     setResLoading(false);
   }, []);
 
+  const fetchPhones = useCallback(async () => {
+    setPhoneLoading(true);
+    const res = await fetch("/api/admin/submissions?tab=phones");
+    if (res.ok) setPhones(await res.json());
+    setPhoneLoading(false);
+  }, []);
+
   useEffect(() => {
     if (authed) {
       fetchSubmissions();
       fetchResources();
+      fetchPhones();
     }
-  }, [authed, fetchSubmissions, fetchResources]);
+  }, [authed, fetchSubmissions, fetchResources, fetchPhones]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +190,14 @@ export default function AdminPage() {
               }`}
             >
               자료관리
+            </button>
+            <button
+              onClick={() => setTab("phones")}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                tab === "phones" ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              전화번호 {phones.length > 0 && <span className="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs">{phones.length}</span>}
             </button>
           </div>
         </div>
@@ -324,6 +344,75 @@ export default function AdminPage() {
                           >
                             삭제
                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 전화번호 탭 */}
+        {tab === "phones" && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-600">수집된 전화번호 ({phones.length}건)</h2>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    const csv = "전화번호,유튜브URL,신청일시,상태\n" +
+                      phones.map(p => `${p.phone},${p.youtube_url},${new Date(p.created_at).toLocaleString("ko-KR")},${p.status}`).join("\n");
+                    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `전화번호_${new Date().toISOString().slice(0, 10)}.csv`;
+                    a.click();
+                  }}
+                  disabled={phones.length === 0}
+                  className="text-sm text-green-600 hover:text-green-800 font-medium disabled:opacity-40"
+                >
+                  CSV 다운로드
+                </button>
+                <button onClick={fetchPhones} disabled={phoneLoading} className="text-sm text-blue-500 hover:text-blue-700">
+                  {phoneLoading ? "로딩..." : "새로고침"}
+                </button>
+              </div>
+            </div>
+
+            {phones.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
+                수집된 전화번호가 없습니다
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">#</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">전화번호</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">유튜브 URL</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">신청일</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {phones.map((p, i) => (
+                      <tr key={i} className="border-b border-gray-50 last:border-0">
+                        <td className="px-5 py-3 text-sm text-gray-400">{i + 1}</td>
+                        <td className="px-5 py-3 text-sm font-medium text-gray-700">
+                          {p.phone.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")}
+                        </td>
+                        <td className="px-5 py-3 text-sm text-gray-500 max-w-[200px] truncate">{p.youtube_url}</td>
+                        <td className="px-5 py-3 text-sm text-gray-400">{new Date(p.created_at).toLocaleDateString("ko-KR")}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                            p.status === "auto_approved" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                          }`}>
+                            {p.status === "auto_approved" ? "자동승인" : "수동승인"}
+                          </span>
                         </td>
                       </tr>
                     ))}
