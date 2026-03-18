@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { getSupabase } from "@/lib/supabase";
 
 export default function Home() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -38,22 +37,18 @@ export default function Home() {
     setResult(null);
 
     try {
-      // 1) 이미지 업로드
-      const ext = file.name.split(".").pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadErr } = await getSupabase().storage
-        .from("screenshots")
-        .upload(fileName, file, { contentType: file.type });
+      // 1) 서버로 이미지 업로드
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (uploadErr) throw new Error("이미지 업로드 실패: " + uploadErr.message);
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      const uploadData = await uploadRes.json();
 
-      const { data: urlData } = getSupabase().storage
-        .from("screenshots")
-        .getPublicUrl(fileName);
+      if (!uploadRes.ok) throw new Error(uploadData.error || "이미지 업로드 실패");
 
-      const imageUrl = urlData.publicUrl;
+      const imageUrl = uploadData.imageUrl;
 
-      // 2) AI 인증 요청
+      // 2) 인증 요청
       const res = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -212,7 +207,7 @@ export default function Home() {
             </form>
 
             <p className="text-center text-xs text-gray-400 mt-6">
-              인증샷은 AI가 자동 분석하며, 확인이 어려운 경우 관리자가 직접 확인합니다.
+              인증샷은 구독 확인 용도로만 사용됩니다.
             </p>
           </>
         )}
