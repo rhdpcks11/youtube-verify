@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export default function Home() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -37,13 +37,13 @@ export default function Home() {
       // 1) 이미지 업로드
       const ext = file.name.split(".").pop();
       const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await getSupabase().storage
         .from("screenshots")
         .upload(fileName, file, { contentType: file.type });
 
       if (uploadErr) throw new Error("이미지 업로드 실패: " + uploadErr.message);
 
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = getSupabase().storage
         .from("screenshots")
         .getPublicUrl(fileName);
 
