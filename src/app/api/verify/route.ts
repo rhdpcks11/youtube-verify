@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
     const { error: insertErr } = await sb.from("submissions").insert({
       phone,
       youtube_url: youtubeUrl,
+      image_url: "",
       status: "auto_approved",
+      ai_result: "",
     });
 
     if (insertErr) {
