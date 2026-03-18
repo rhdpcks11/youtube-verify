@@ -45,24 +45,36 @@ export default function AdminPage() {
   // 이미지 모달
   const [modalImage, setModalImage] = useState<string | null>(null);
 
+  const safeJson = async (res: Response) => {
+    const text = await res.text();
+    if (!text) return null;
+    try { return JSON.parse(text); } catch { return null; }
+  };
+
   const fetchSubmissions = useCallback(async () => {
     setSubLoading(true);
-    const res = await fetch("/api/admin/submissions");
-    if (res.ok) setSubmissions(await res.json());
+    try {
+      const res = await fetch("/api/admin/submissions");
+      if (res.ok) { const data = await safeJson(res); if (data) setSubmissions(data); }
+    } catch (e) { console.error("fetchSubmissions error:", e); }
     setSubLoading(false);
   }, []);
 
   const fetchResources = useCallback(async () => {
     setResLoading(true);
-    const res = await fetch("/api/admin/resources");
-    if (res.ok) setResources(await res.json());
+    try {
+      const res = await fetch("/api/admin/resources");
+      if (res.ok) { const data = await safeJson(res); if (data) setResources(data); }
+    } catch (e) { console.error("fetchResources error:", e); }
     setResLoading(false);
   }, []);
 
   const fetchPhones = useCallback(async () => {
     setPhoneLoading(true);
-    const res = await fetch("/api/admin/submissions?tab=phones");
-    if (res.ok) setPhones(await res.json());
+    try {
+      const res = await fetch("/api/admin/submissions?tab=phones");
+      if (res.ok) { const data = await safeJson(res); if (data) setPhones(data); }
+    } catch (e) { console.error("fetchPhones error:", e); }
     setPhoneLoading(false);
   }, []);
 
@@ -108,9 +120,9 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ youtube_url: newYoutubeUrl.trim(), resource_link: newResourceLink.trim() }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
-        setMessage({ type: "error", text: data.error || "저장 실패" });
+        setMessage({ type: "error", text: data?.error || `저장 실패 (${res.status})` });
         return;
       }
       setMessage({ type: "success", text: "자료가 저장되었습니다." });

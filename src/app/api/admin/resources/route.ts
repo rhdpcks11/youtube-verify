@@ -11,17 +11,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "인증 필요" }, { status: 401 });
   }
 
-  const sb = getServiceSupabase();
-  const { data, error } = await sb
-    .from("resources")
-    .select("*")
-    .order("created_at", { ascending: false });
+  try {
+    const sb = getServiceSupabase();
+    const { data, error } = await sb
+      .from("resources")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data || []);
+  } catch (err) {
+    console.error("[Resources GET]", err);
+    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
   }
-
-  return NextResponse.json(data);
 }
 
 // POST: 자료 등록
@@ -30,23 +35,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "인증 필요" }, { status: 401 });
   }
 
-  const { youtube_url, resource_link } = await req.json();
+  try {
+    const body = await req.json();
+    const { youtube_url, resource_link } = body;
 
-  if (!youtube_url || !resource_link) {
-    return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
+    if (!youtube_url || !resource_link) {
+      return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
+    }
+
+    const sb = getServiceSupabase();
+    const { error } = await sb.from("resources").upsert(
+      { youtube_url, resource_link },
+      { onConflict: "youtube_url" }
+    );
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[Resources POST]", err);
+    return NextResponse.json({ error: "서버 오류: " + (err instanceof Error ? err.message : "알 수 없음") }, { status: 500 });
   }
-
-  const sb = getServiceSupabase();
-  const { error } = await sb.from("resources").upsert(
-    { youtube_url, resource_link },
-    { onConflict: "youtube_url" }
-  );
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true });
 }
 
 // DELETE: 자료 삭제
@@ -55,13 +66,18 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "인증 필요" }, { status: 401 });
   }
 
-  const { id } = await req.json();
-  const sb = getServiceSupabase();
-  const { error } = await sb.from("resources").delete().eq("id", id);
+  try {
+    const { id } = await req.json();
+    const sb = getServiceSupabase();
+    const { error } = await sb.from("resources").delete().eq("id", id);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[Resources DELETE]", err);
+    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true });
 }
