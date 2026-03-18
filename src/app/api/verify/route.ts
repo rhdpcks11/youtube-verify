@@ -3,9 +3,9 @@ import { getServiceSupabase } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
-    const { youtubeUrl, phone, imageUrl } = await req.json();
+    const { youtubeUrl, phone } = await req.json();
 
-    if (!youtubeUrl || !phone || !imageUrl) {
+    if (!youtubeUrl || !phone) {
       return NextResponse.json({ error: "필수 항목이 누락되었습니다." }, { status: 400 });
     }
 
@@ -22,18 +22,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "등록되지 않은 영상입니다. URL을 다시 확인해주세요." }, { status: 404 });
     }
 
-    // DB에 신청 저장 (자동승인)
+    // 전화번호 저장
     const { error: insertErr } = await sb.from("submissions").insert({
       phone,
       youtube_url: youtubeUrl,
-      image_url: imageUrl,
       status: "auto_approved",
-      ai_result: "URL 매칭 자동승인",
     });
 
     if (insertErr) {
       console.error("[DB] 저장 오류:", JSON.stringify(insertErr));
-      return NextResponse.json({ error: "신청 저장 실패: " + insertErr.message + " (code: " + insertErr.code + ")" }, { status: 500 });
+      return NextResponse.json({ error: "저장 실패: " + insertErr.message }, { status: 500 });
     }
 
     return NextResponse.json({

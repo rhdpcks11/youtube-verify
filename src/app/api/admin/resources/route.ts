@@ -18,10 +18,7 @@ export async function GET(req: NextRequest) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data || []);
   } catch (err) {
     console.error("[Resources GET]", err);
@@ -36,8 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    const { youtube_url, resource_link } = body;
+    const { name, youtube_url, resource_link } = await req.json();
 
     if (!youtube_url || !resource_link) {
       return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
@@ -45,18 +41,42 @@ export async function POST(req: NextRequest) {
 
     const sb = getServiceSupabase();
     const { error } = await sb.from("resources").upsert(
-      { youtube_url, resource_link },
+      { name: name || "", youtube_url, resource_link },
       { onConflict: "youtube_url" }
     );
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[Resources POST]", err);
     return NextResponse.json({ error: "서버 오류: " + (err instanceof Error ? err.message : "알 수 없음") }, { status: 500 });
+  }
+}
+
+// PATCH: 자료 수정
+export async function PATCH(req: NextRequest) {
+  if (!isAdmin(req)) {
+    return NextResponse.json({ error: "인증 필요" }, { status: 401 });
+  }
+
+  try {
+    const { id, name, youtube_url, resource_link } = await req.json();
+
+    if (!id) return NextResponse.json({ error: "ID 누락" }, { status: 400 });
+
+    const sb = getServiceSupabase();
+    const updateData: Record<string, string> = {};
+    if (name !== undefined) updateData.name = name;
+    if (youtube_url) updateData.youtube_url = youtube_url;
+    if (resource_link) updateData.resource_link = resource_link;
+
+    const { error } = await sb.from("resources").update(updateData).eq("id", id);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[Resources PATCH]", err);
+    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
   }
 }
 
@@ -71,10 +91,7 @@ export async function DELETE(req: NextRequest) {
     const sb = getServiceSupabase();
     const { error } = await sb.from("resources").delete().eq("id", id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[Resources DELETE]", err);
