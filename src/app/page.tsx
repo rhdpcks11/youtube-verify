@@ -68,23 +68,11 @@ export default function Home() {
 
       if (!res.ok) throw new Error(data.error || "처리 중 오류가 발생했습니다.");
 
-      if (data.status === "auto_approved" && data.resourceLink) {
-        setResult({
-          success: true,
-          message: "구독이 확인되었습니다! 아래 링크에서 자료를 받아주세요.",
-          resourceLink: data.resourceLink,
-        });
-      } else if (data.status === "auto_approved") {
-        setResult({
-          success: true,
-          message: "구독이 확인되었습니다! 아직 등록된 자료가 없습니다. 잠시 후 다시 시도해주세요.",
-        });
-      } else {
-        setResult({
-          success: true,
-          message: "신청이 접수되었습니다! 관리자 확인 후 자료를 받으실 수 있습니다.",
-        });
-      }
+      setResult({
+        success: true,
+        message: "구독 인증이 완료되었습니다! 아래 링크에서 자료를 받아주세요.",
+        resourceLink: data.resourceLink,
+      });
 
       // 초기화
       setYoutubeUrl("");
@@ -203,7 +191,7 @@ export default function Home() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    AI 인증 확인 중...
+                    확인 중...
                   </span>
                 ) : (
                   "인증하고 자료 받기"
