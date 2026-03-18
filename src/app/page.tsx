@@ -1,0 +1,190 @@
+"use client";
+
+import { useState, useRef } from "react";
+import { supabase } from "@/lib/supabase";
+
+export default function Home() {
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [phone, setPhone] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  };
+
+  const formatPhone = (value: string) => {
+    const nums = value.replace(/\D/g, "").slice(0, 11);
+    if (nums.length <= 3) return nums;
+    if (nums.length <= 7) return `${nums.slice(0, 3)}-${nums.slice(3)}`;
+    return `${nums.slice(0, 3)}-${nums.slice(3, 7)}-${nums.slice(7)}`;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file || !youtubeUrl.trim() || !phone.trim()) return;
+
+    setLoading(true);
+    setResult(null);
+
+    try {
+      // 1) 이미지 업로드
+      const ext = file.name.split(".").pop();
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("screenshots")
+        .upload(fileName, file, { contentType: file.type });
+
+      if (uploadErr) throw new Error("이미지 업로드 실패: " + uploadErr.message);
+
+      const { data: urlData } = supabase.storage
+        .from("screenshots")
+        .getPublicUrl(fileName);
+
+      const imageUrl = urlData.publicUrl;
+
+      // 2) AI 인증 요청
+      const res = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          youtubeUrl: youtubeUrl.trim(),
+          phone: phone.replace(/-/g, ""),
+          imageUrl,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "처리 중 오류가 발생했습니다.");
+
+      if (data.status === "auto_approved") {
+        setResult({
+          success: true,
+          message: "구독이 확인되었습니다! 자료 링크가 알림톡으로 발송됩니다.",
+        });
+      } else {
+        setResult({
+          success: true,
+          message: "신청이 접수되었습니다. 관리자 확인 후 알림톡으로 발송됩니다.",
+        });
+      }
+
+      // 초기화
+      setYoutubeUrl("");
+      setPhone("");
+      setFile(null);
+      setPreview(null);
+      if (fileRef.current) fileRef.current.value = "";
+    } catch (err) {
+      setResult({
+        success: false,
+        message: err instanceof Error ? err.message : "알 수 없는 오류",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+            <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">구독 인증 자료 발송</h1>
+          <p className="text-gray-500 mt-2 text-sm">유튜브 구독 인증샷을 업로드하면<br />자료 링크를 카카오 알림톡으로 보내드려요</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-5">
+          {/* 유튜브 URL */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">유튜브 영상 URL</label>
+            <input
+              type="url"
+              required
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="https://youtube.com/watch?v=..."
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition"
+            />
+          </div>
+
+          {/* 전화번호 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">전화번호</label>
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+              placeholder="010-1234-5678"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition"
+            />
+          </div>
+
+          {/* 인증샷 업로드 */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">구독 인증샷</label>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-red-300 hover:bg-red-50/30 transition"
+            >
+              {preview ? (
+                <img src={preview} alt="미리보기" className="max-h-48 mx-auto rounded-lg" />
+              ) : (
+                <div>
+                  <svg className="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.41a2.25 2.25 0 013.182 0l2.909 2.91m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                  <p className="text-sm text-gray-400">클릭하여 인증샷 업로드</p>
+                  <p className="text-xs text-gray-300 mt-1">&quot;구독중&quot; 텍스트가 보이는 스크린샷</p>
+                </div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+          </div>
+
+          {/* 제출 버튼 */}
+          <button
+            type="submit"
+            disabled={loading || !file || !youtubeUrl.trim() || !phone.trim()}
+            className="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg active:scale-[0.98]"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                AI 인증 확인 중...
+              </span>
+            ) : (
+              "인증하고 자료 받기"
+            )}
+          </button>
+
+          {/* 결과 메시지 */}
+          {result && (
+            <div className={`p-4 rounded-xl text-sm ${result.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+              {result.message}
+            </div>
+          )}
+        </form>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
+          인증샷은 AI가 자동 분석하며, 확인이 어려운 경우 관리자가 직접 확인합니다.
+        </p>
+      </div>
+    </div>
+  );
+}
