@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 export default function Home() {
-  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [keyword, setKeyword] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
@@ -21,7 +21,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!youtubeUrl.trim() || !phone.trim()) return;
+    if (!keyword.trim() || !phone.trim()) return;
 
     setLoading(true);
     setResult(null);
@@ -31,7 +31,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          youtubeUrl: youtubeUrl.trim(),
+          keyword: keyword.trim(),
           phone: phone.replace(/-/g, ""),
         }),
       });
@@ -42,11 +42,11 @@ export default function Home() {
 
       setResult({
         success: true,
-        message: "구독 인증이 완료되었습니다! 아래 링크에서 자료를 받아주세요.",
+        message: "확인 완료!",
         resourceLink: data.resourceLink,
       });
 
-      setYoutubeUrl("");
+      setKeyword("");
       setPhone("");
     } catch (err) {
       setResult({
@@ -67,8 +67,8 @@ export default function Home() {
               <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">구독 인증 자료 받기</h1>
-          <p className="text-gray-500 mt-2 text-sm">유튜브 구독 인증 후<br />바로 자료 링크를 받을 수 있어요</p>
+          <h1 className="text-2xl font-bold text-gray-900">영상 자료 받기</h1>
+          <p className="text-gray-500 mt-2 text-sm">영상 키워드를 입력하면<br />바로 자료 링크를 받을 수 있어요</p>
         </div>
 
         {result?.resourceLink ? (
@@ -78,7 +78,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-gray-900 mb-2">인증 완료!</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">확인 완료!</h2>
             <p className="text-sm text-gray-500 mb-5">아래 버튼을 눌러 자료를 받아주세요.</p>
             <a
               href={result.resourceLink}
@@ -99,13 +99,13 @@ export default function Home() {
           <>
             <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">유튜브 영상 URL</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">영상 키워드</label>
                 <input
-                  type="url"
+                  type="text"
                   required
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="https://youtube.com/watch?v=..."
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="예: 학원가기싫어"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300 transition"
                 />
               </div>
@@ -124,7 +124,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={loading || !youtubeUrl.trim() || !phone.trim()}
+                disabled={loading || !keyword.trim() || !phone.trim()}
                 className="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg active:scale-[0.98]"
               >
                 {loading ? (

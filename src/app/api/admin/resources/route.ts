@@ -33,16 +33,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { name, youtube_url, resource_link } = await req.json();
+    const { name, keyword, resource_link } = await req.json();
 
-    if (!youtube_url || !resource_link) {
+    if (!keyword || !resource_link) {
       return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
     }
 
     const sb = getServiceSupabase();
     const { error } = await sb.from("resources").upsert(
-      { name: name || "", youtube_url, resource_link },
-      { onConflict: "youtube_url" }
+      { name: name || "", keyword, resource_link },
+      { onConflict: "keyword" }
     );
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -60,14 +60,14 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    const { id, name, youtube_url, resource_link } = await req.json();
+    const { id, name, keyword, resource_link } = await req.json();
 
     if (!id) return NextResponse.json({ error: "ID 누락" }, { status: 400 });
 
     const sb = getServiceSupabase();
     const updateData: Record<string, string> = {};
     if (name !== undefined) updateData.name = name;
-    if (youtube_url) updateData.youtube_url = youtube_url;
+    if (keyword) updateData.keyword = keyword;
     if (resource_link) updateData.resource_link = resource_link;
 
     const { error } = await sb.from("resources").update(updateData).eq("id", id);

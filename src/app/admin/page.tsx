@@ -5,14 +5,14 @@ import { useState, useEffect, useCallback } from "react";
 interface Resource {
   id: string;
   name: string;
-  youtube_url: string;
+  keyword: string;
   resource_link: string;
   created_at: string;
 }
 
 interface PhoneRecord {
   phone: string;
-  youtube_url: string;
+  keyword: string;
   created_at: string;
   status: string;
 }
@@ -27,14 +27,14 @@ export default function AdminPage() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [resLoading, setResLoading] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newYoutubeUrl, setNewYoutubeUrl] = useState("");
+  const [newKeyword, setNewKeyword] = useState("");
   const [newResourceLink, setNewResourceLink] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // 수정 중인 자료
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editYoutubeUrl, setEditYoutubeUrl] = useState("");
+  const [editKeyword, setEditKeyword] = useState("");
   const [editResourceLink, setEditResourceLink] = useState("");
 
   // 전화번호 수집
@@ -86,13 +86,13 @@ export default function AdminPage() {
 
   const handleAddResource = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newYoutubeUrl.trim() || !newResourceLink.trim() || !newName.trim()) return;
+    if (!newKeyword.trim() || !newResourceLink.trim() || !newName.trim()) return;
     setMessage(null);
     try {
       const res = await fetch("/api/admin/resources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim(), youtube_url: newYoutubeUrl.trim(), resource_link: newResourceLink.trim() }),
+        body: JSON.stringify({ name: newName.trim(), keyword: newKeyword.trim(), resource_link: newResourceLink.trim() }),
       });
       const data = await safeJson(res);
       if (!res.ok) {
@@ -101,7 +101,7 @@ export default function AdminPage() {
       }
       setMessage({ type: "success", text: "자료가 저장되었습니다." });
       setNewName("");
-      setNewYoutubeUrl("");
+      setNewKeyword("");
       setNewResourceLink("");
       fetchResources();
     } catch (err) {
@@ -112,7 +112,7 @@ export default function AdminPage() {
   const startEdit = (res: Resource) => {
     setEditingId(res.id);
     setEditName(res.name || "");
-    setEditYoutubeUrl(res.youtube_url);
+    setEditKeyword(res.keyword);
     setEditResourceLink(res.resource_link);
   };
 
@@ -125,7 +125,7 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/resources", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name: editName.trim(), youtube_url: editYoutubeUrl.trim(), resource_link: editResourceLink.trim() }),
+        body: JSON.stringify({ id, name: editName.trim(), keyword: editKeyword.trim(), resource_link: editResourceLink.trim() }),
       });
       if (!res.ok) {
         const data = await safeJson(res);
@@ -207,9 +207,9 @@ export default function AdminPage() {
                 />
                 <div className="flex gap-3">
                   <input
-                    value={newYoutubeUrl}
-                    onChange={(e) => setNewYoutubeUrl(e.target.value)}
-                    placeholder="유튜브 URL"
+                    value={newKeyword}
+                    onChange={(e) => setNewKeyword(e.target.value)}
+                    placeholder="키워드 (예: 학원가기싫어)"
                     className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                   />
                   <input
@@ -221,7 +221,7 @@ export default function AdminPage() {
                 </div>
                 <button
                   type="submit"
-                  disabled={!newName.trim() || !newYoutubeUrl.trim() || !newResourceLink.trim()}
+                  disabled={!newName.trim() || !newKeyword.trim() || !newResourceLink.trim()}
                   className="w-full py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   등록
@@ -258,9 +258,9 @@ export default function AdminPage() {
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                         />
                         <input
-                          value={editYoutubeUrl}
-                          onChange={(e) => setEditYoutubeUrl(e.target.value)}
-                          placeholder="유튜브 URL"
+                          value={editKeyword}
+                          onChange={(e) => setEditKeyword(e.target.value)}
+                          placeholder="키워드"
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                         />
                         <input
@@ -286,8 +286,10 @@ export default function AdminPage() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-gray-800">{res.name || "(이름 없음)"}</p>
-                            <p className="text-xs text-gray-400 mt-1 truncate">{res.youtube_url}</p>
-                            <a href={res.resource_link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-0.5 block truncate">
+                            <p className="text-xs text-gray-400 mt-1">
+                              키워드: <span className="inline-block bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-medium">{res.keyword}</span>
+                            </p>
+                            <a href={res.resource_link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline mt-1 block truncate">
                               {res.resource_link}
                             </a>
                           </div>
@@ -323,8 +325,8 @@ export default function AdminPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => {
-                    const csv = "전화번호,유튜브URL,신청일시\n" +
-                      phones.map(p => `${p.phone},${p.youtube_url},${new Date(p.created_at).toLocaleString("ko-KR")}`).join("\n");
+                    const csv = "전화번호,키워드,신청일시\n" +
+                      phones.map(p => `${p.phone},${p.keyword},${new Date(p.created_at).toLocaleString("ko-KR")}`).join("\n");
                     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
@@ -354,7 +356,7 @@ export default function AdminPage() {
                     <tr className="border-b border-gray-100 bg-gray-50">
                       <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">#</th>
                       <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">전화번호</th>
-                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">유튜브 URL</th>
+                      <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">키워드</th>
                       <th className="text-left text-xs font-semibold text-gray-500 px-5 py-3">신청일</th>
                     </tr>
                   </thead>
@@ -365,7 +367,7 @@ export default function AdminPage() {
                         <td className="px-5 py-3 text-sm font-medium text-gray-700">
                           {p.phone.replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3")}
                         </td>
-                        <td className="px-5 py-3 text-sm text-gray-500 max-w-[250px] truncate">{p.youtube_url}</td>
+                        <td className="px-5 py-3 text-sm text-gray-500">{p.keyword}</td>
                         <td className="px-5 py-3 text-sm text-gray-400">{new Date(p.created_at).toLocaleDateString("ko-KR")}</td>
                       </tr>
                     ))}

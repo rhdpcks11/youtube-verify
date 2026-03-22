@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     if (tab === "phones") {
       const { data, error } = await sb
         .from("submissions")
-        .select("phone, youtube_url, created_at, status")
+        .select("phone, keyword, created_at, status")
         .in("status", ["auto_approved", "approved"])
         .order("created_at", { ascending: false });
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     // default: pending
     const { data, error } = await sb
       .from("submissions")
-      .select("id, phone, youtube_url, status, created_at")
+      .select("id, phone, keyword, status, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
